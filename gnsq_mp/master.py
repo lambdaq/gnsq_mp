@@ -21,6 +21,7 @@ def safe_str(s):
 class NsqMPController(object):
 
     lookupd_http_addresses = []
+    worker = None  # Need to specify this
 
     def __init__(self, topic, channel_name='gnsq_mp'):
         self.topic = topic
@@ -59,7 +60,9 @@ class NsqMPController(object):
             if proc is None or proc.poll() is not None:
                 proc = subprocess.Popen([
                     sys.executable, os.path.abspath(
-                        os.path.join(__file__, '..', 'worker.py')),
+                        os.path.join(
+                            sys.modules[self.__class__.__module__].__file__,
+                            '..', self.__class__.worker)),
                     self.topic, nsqd_tcp_addr, self.channel_name])
                 ProcessAffinity(proc.pid).affinity = i
                 print>>sys.stderr, ' [start] pid=%s, nsqd=%s' % (proc.pid, nsqd_tcp_addr)

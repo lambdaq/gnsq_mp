@@ -4,7 +4,7 @@ NSQ with multi process Gevent.
 
 [NSQ](https://nsq.io) is a distrbuted message queue.
 
-[gnsq]((https://github.com/wtolson/gnsq/)) is a [Gevent](http://www.gevent.org/) powered NSQ library written in pure Python with fast asyncronous operations
+[gnsq](https://github.com/wtolson/gnsq/) is a [Gevent](http://www.gevent.org/) powered NSQ library written in pure Python with fast asyncronous operations
 
 Due the limitations of GIL in CPython, even with Gevent, `gnsq` can not handle high-volumn message with many topics and nsqd hosts. It's easy to hit 100% CPU usage for one core.
 
@@ -54,6 +54,12 @@ The source code should look like:
         worker = 'worker.py'  # relative path to the script you created above
 
     MyController.run(topic="blah", channel_name="gnsq_mp#ephemeral")
+
+# Install
+
+    pip install https://github.com/lambdaq/gnsq_mp/archive/master.zip
+
+PyPI coming later.
 
 # License
 
