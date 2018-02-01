@@ -51,9 +51,9 @@ class NsqProcessWorker(object):
         if len(sys.argv) != 4:
             print>>sys.stderr, "Usage: %s topic channel nsqd_tcp_addr" % __file__
             exit(0)
-        logger.info(" [worker_start] start nsq subscriber. pid=%s", os.getpid())
         signal(2, cls.close)
         args = sys.argv[1:4] + [block]
+        logger.info(" [worker_start] start nsq subscriber. pid=%s, args=%s", os.getpid(), args)
         return cls(*args)
 
     @classmethod
