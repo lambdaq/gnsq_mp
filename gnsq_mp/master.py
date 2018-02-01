@@ -29,6 +29,8 @@ class NsqMPController(object):
         self.poll_count = 0
         if not self.__class__.lookupd_http_addresses:
             raise ValueError('Empty lookupd_http_addresses')
+        if not self.__class__.worker:
+            raise NotImplementedError('need define worker script path')
         self.lookupds = cycle(Lookupd(x) for x in self.__class__.lookupd_http_addresses)
 
     @property
@@ -58,7 +60,7 @@ class NsqMPController(object):
                 proc = subprocess.Popen([
                     sys.executable, os.path.abspath(
                         os.path.join(__file__, '..', 'worker.py')),
-                    self.topic, self.channel_name, nsqd_tcp_addr])
+                    self.topic, nsqd_tcp_addr, self.channel_name])
                 ProcessAffinity(proc.pid).affinity = i
                 print>>sys.stderr, ' [start] pid=%s, nsqd=%s' % (proc.pid, nsqd_tcp_addr)
                 self._procs[nsqd_tcp_addr] = proc

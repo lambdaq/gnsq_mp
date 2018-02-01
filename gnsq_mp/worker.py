@@ -77,7 +77,7 @@ class NsqProcessWorker(object):
             sleep(1)
         exit(0)  # force close
 
-    def __init__(self, topic, channel, nsqd_addr, block=False):
+    def __init__(self, topic, nsqd_addr, channel, block=False):
         self.nsqd_addr = nsqd_addr
         NsqProcessWorker.reader = Reader(
             topic, channel,
