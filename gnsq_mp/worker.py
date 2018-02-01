@@ -53,7 +53,7 @@ class NsqProcessWorker(object):
             exit(0)
         logger.info(" [worker_start] start nsq subscriber. pid=%s", os.getpid())
         signal(2, cls.close)
-        args = sys.argv[1:3] + False
+        args = sys.argv[1:4] + [block]
         return cls(*args)
 
     @classmethod
