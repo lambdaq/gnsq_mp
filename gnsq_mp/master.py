@@ -36,7 +36,7 @@ class NsqMPController(object):
     @property
     def rand_lookup(self):
         # random.shuffle returns None so fuck it.
-        return next(self.__class__.lookupds)
+        return next(self.lookupds)
 
     def get_producer_addrs(self):
         return [

@@ -2,20 +2,24 @@
 
 NSQ with multi process Gevent.
 
-Due the limitations of GIL in CPython, event with Gevent, [`gnsq`](https://github.com/wtolson/gnsq/) can not handle high-volumn message.
+[NSQ](https://nsq.io) is a distrbuted message queue.
 
-If we spawn multi consumer process for each topic, as the process number grows, so does the TCP connection established to each nsqd host.
+[gnsq]((https://github.com/wtolson/gnsq/)) is a [Gevent](http://www.gevent.org/) powered NSQ library written in pure Python with fast asyncronous operations
 
-This `gnsq_mp` project implements a multiprocess mode:
+Due the limitations of GIL in CPython, even with Gevent, `gnsq` can not handle high-volumn message with many topics and nsqd hosts. It's easy to hit 100% CPU usage for one core.
 
- - the `NsqMPController` process polls and spawns sub-process for individuale nsqd connections
+If we add number of consumer nodes for each topic, as the process number grows, so does the TCP connection established to each nsqd host. It's easy to hit tens of thousands of connections which adds a non-neglectable amount of coroutine context switch cost.
+
+This `gnsq_mp` project implements a new multiprocess mode:
+
+ - the `NsqMPController` process polls [lookupd](nsq.io/components/nsqlookupd.html) and spawns sub-process for each individuale nsqd connections.
  - the `NsqProcessWorker` sub-process connects to a single nsqd host and consumes message
  - sub-process are health-checked and automatically restarted if exits unexpectedly
  - sub-process will exit if became a orphan
  - sub-processes are by default set CPU affilinty with only 1 processor core.
 
 
-# Usage:
+# Usage
 
 First of all, create your `worker.py` like this:
 
@@ -51,3 +55,6 @@ The source code should look like:
 
     MyController.run(topic="blah", channel_name="gnsq_mp#ephemeral")
 
+# License
+
+BSD 3-clause. See `LICENSE` file.
