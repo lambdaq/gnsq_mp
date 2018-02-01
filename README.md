@@ -1,6 +1,18 @@
 # gnsq_mp
 
-NSQ with multi process Gevent 
+NSQ with multi process Gevent.
+
+Due the limitations of GIL in CPython, event with Gevent, [`gnsq`](https://github.com/wtolson/gnsq/) can not handle high-volumn message.
+
+If we spawn multi consumer process for each topic, as the process number grows, so does the TCP connection established to each nsqd host.
+
+This `gnsq_mp` project implements a multiprocess mode:
+
+ - the `NsqMPController` process polls and spawns sub-process for individuale nsqd connections
+ - the `NsqProcessWorker` sub-process connects to a single nsqd host and consumes message
+ - sub-process are health-checked and automatically restarted if exits unexpectedly
+ - sub-process will exit if became a orphan
+ - sub-processes are by default set CPU affilinty with only 1 processor core.
 
 
 # Usage:
