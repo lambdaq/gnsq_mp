@@ -79,6 +79,8 @@ class NsqProcessWorker(object):
 
     def __init__(self, topic, nsqd_addr, channel, block=False):
         self.nsqd_addr = nsqd_addr
+        self.topic = topic
+        self.channel = channel
         NsqProcessWorker.reader = Reader(
             topic, channel,
             message_handler=self.handle_message,
