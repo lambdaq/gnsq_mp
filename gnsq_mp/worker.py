@@ -88,6 +88,7 @@ class NsqProcessWorker(object):
             max_in_flight=200, max_concurrency=200)
         spawn(self.__class__.poll_parent)
         NsqProcessWorker.reader.start(block)  # because consumer will block
+        return self
 
     @classmethod
     def close(cls):
