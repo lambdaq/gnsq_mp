@@ -99,8 +99,8 @@ class NsqProcessWorker(object):
         # for conn in cls.reader.conns:
         #     conn.close()
         # if cls.reader:
-        with Timeout(timeout):
-            cls.reader.close()
+        spawn(cls.reader.close)
+        sleep(cls._shutdown_timer)
 
 
 if '__main__' == __name__:
