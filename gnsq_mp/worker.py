@@ -1,7 +1,7 @@
 #!/home/sail/miniconda2/bin/python
 # coding: utf-8
 
-from gevent import monkey, sleep, signal, spawn, kill
+from gevent import monkey, sleep, signal, spawn, Timeout
 monkey.patch_all()  # noqa
 
 import os, sys, logging
@@ -99,7 +99,8 @@ class NsqProcessWorker(object):
         # for conn in cls.reader.conns:
         #     conn.close()
         # if cls.reader:
-        kill(spawn(cls.reader.close), timeout=timeout)
+        with Timeout(timeout):
+            cls.reader.close()
 
 
 if '__main__' == __name__:
