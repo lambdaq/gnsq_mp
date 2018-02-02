@@ -58,19 +58,24 @@ class NsqProcessWorker(object):
 
     @classmethod
     def check_parent(cls):
+        # check original parent pid
         try:
             r = os.kill(cls.ppid, 0)
         except OSError:
             return False
-        if r is None and os.getppid() > 1:  # zombie/orphan process parent pid==1
-            return cls.ppid
+        # if original pid exists and real pid is not 1
+        ppid = os.getppid()
+        if ppid != cls.ppid:
+            return False
+        if r is None and ppid > 1:  # zombie/orphan process parent pid==1
+            return ppid
         return False
 
     @classmethod
     def poll_parent(cls):
         while cls.shutdown_timeout < 0 and cls.check_parent():
             sleep(2 + random())
-        if cls.shutdown_timeout < 0:
+        if cls.shutdown_timeout <= 0:
             cls.close()
         while cls.shutdown_timeout > 0:
             cls.shutdown_timeout -= 1
