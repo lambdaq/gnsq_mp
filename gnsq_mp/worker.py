@@ -1,7 +1,7 @@
 #!/home/sail/miniconda2/bin/python
 # coding: utf-8
 
-from gevent import monkey, sleep, signal, spawn
+from gevent import monkey, sleep, signal, spawn, kill
 monkey.patch_all()  # noqa
 
 import os, sys, logging
@@ -19,7 +19,7 @@ from gnsq import Reader
 class NsqProcessWorker(object):
 
     reader = None
-    shutdown_timeout = -1  # seconds bevose
+    _shutdown_timer = -1  # seconds bevose
     ppid = os.getppid()
 
     @classmethod
@@ -51,7 +51,7 @@ class NsqProcessWorker(object):
         if len(sys.argv) != 4:
             print>>sys.stderr, "Usage: %s topic channel nsqd_tcp_addr" % __file__
             exit(0)
-        signal(2, cls.close)
+        signal(2, cls.shutdown)
         args = sys.argv[1:4] + [block]
         logger.info(" [worker_start] start nsq subscriber. pid=%s, args=%s", os.getpid(), args)
         return cls(*args)
@@ -73,13 +73,9 @@ class NsqProcessWorker(object):
 
     @classmethod
     def poll_parent(cls):
-        while cls.shutdown_timeout < 0 and cls.check_parent():
+        while cls._shutdown_timer < 0 and cls.check_parent():
             sleep(2 + random())
-        cls.close()
-        while cls.shutdown_timeout > 0:
-            cls.shutdown_timeout -= 1
-            cls.close()
-            sleep(1)
+        cls.shutdown()
         exit(0)  # force close
 
     def __init__(self, topic, nsqd_addr, channel, block=False):
@@ -95,15 +91,15 @@ class NsqProcessWorker(object):
         NsqProcessWorker.reader.start(block)  # because consumer will block
 
     @classmethod
-    def close(cls):
-        if cls.shutdown_timeout < 0:
-            cls.shutdown_timeout = 8  # 8 seconds timeout
+    def shutdown(cls, timeout=8):
+        if cls._shutdown_timer < 0:
+            cls._shutdown_timer = timeout  # 8 seconds timeout
         logger.info(' [worker_close] pid=%s cls=%s, reader=%s', os.getpid(), cls, cls.reader)
         # if cls.reader and cls.reader.conns:
         # for conn in cls.reader.conns:
         #     conn.close()
         # if cls.reader:
-        cls.reader.close()
+        kill(spawn(cls.reader.close), timeout=timeout)
 
 
 if '__main__' == __name__:
