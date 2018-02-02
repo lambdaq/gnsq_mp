@@ -96,11 +96,11 @@ class NsqProcessWorker(object):
 
     @classmethod
     def close(cls):
-        cls.shutdown_timeout = 8  # 5 seconds timeout
+        cls.shutdown_timeout = 8  # 8 seconds timeout
         logger.info(' [worker_close] pid=%s cls=%s, reader=%s', os.getpid(), cls, cls.reader)
         # if cls.reader and cls.reader.conns:
-        for conn in cls.reader.conns:
-            conn.close()
+        # for conn in cls.reader.conns:
+        #     conn.close()
         # if cls.reader:
         cls.reader.close()
 
