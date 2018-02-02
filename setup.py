@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='gnsq_mp',
-    version="0.2.2",
+    version="0.2.3",
     # packages=find_packages('src'),
     packages=['gnsq_mp'],
     install_requires=[

@@ -6,8 +6,8 @@ import random
 from itertools import cycle
 from collections import OrderedDict
 
+from gevent import subprocess, sleep, signal
 from gnsq import Lookupd
-from gevent import subprocess, sleep
 
 from cpu_affinity import ProcessAffinity
 
@@ -70,18 +70,22 @@ class NsqMPController(object):
                 self._procs[nsqd_tcp_addr] = proc
         self.poll_count += 1
 
+    def kill_all(self):
+        for k, p in self._procs.iteritems():
+            p.send_signal(2)
+            p.wait()
+            print>>sys.stderr, ' [kill] %s pid=%s, rc=%d' % (k, p.pid, p.returncode)
+
     @classmethod
     def run(cls, *args, **kwargs):
         inst = cls(*args, **kwargs)
+        signal(2, inst.kill_all)
         try:
             while 1:
                 inst.check_worker()
                 sleep(3)
         except KeyboardInterrupt:
-            for k, p in inst._procs.iteritems():
-                p.send_signal(2)
-                p.wait()
-                print>>sys.stderr, ' [kill] %s pid=%s, rc=%d' % (k, p.pid, p.returncode)
+            inst.kill_all()
             print>>sys.stderr, ' [exit] all subprocess stopped.'
             exit(0)
         return inst
