@@ -75,10 +75,10 @@ class NsqProcessWorker(object):
     def poll_parent(cls):
         while cls.shutdown_timeout < 0 and cls.check_parent():
             sleep(2 + random())
-        if cls.shutdown_timeout <= 0:
-            cls.close()
+        cls.close()
         while cls.shutdown_timeout > 0:
             cls.shutdown_timeout -= 1
+            cls.close()
             sleep(1)
         exit(0)  # force close
 
@@ -96,7 +96,8 @@ class NsqProcessWorker(object):
 
     @classmethod
     def close(cls):
-        cls.shutdown_timeout = 8  # 8 seconds timeout
+        if cls.shutdown_timeout < 0:
+            cls.shutdown_timeout = 8  # 8 seconds timeout
         logger.info(' [worker_close] pid=%s cls=%s, reader=%s', os.getpid(), cls, cls.reader)
         # if cls.reader and cls.reader.conns:
         # for conn in cls.reader.conns:
