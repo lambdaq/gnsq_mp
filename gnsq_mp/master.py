@@ -44,11 +44,13 @@ class NsqMPController(object):
         return next(self.lookupds)
 
     def get_producer_addrs(self):
-        return [
+        r = [
             '%s:%s' % (
                 x.get('broadcast_address') or x['address'],
                 x['tcp_port']  # also: producer['http_port']
             ) for x in self.rand_lookup.lookup(self.topic)['producers']]
+        random.shuffle(r)
+        return r
 
     def check_worker(self):
         if self.poll_count % 10 == 0:
