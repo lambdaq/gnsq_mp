@@ -86,7 +86,7 @@ class NsqProcessWorker(object):
             topic, channel,
             message_handler=self.handle_message,
             nsqd_tcp_addresses=nsqd_addr,
-            # max_in_flight=200,
+            max_in_flight=200,
             max_concurrency=2000)
         spawn(self.__class__.poll_parent)
         NsqProcessWorker.reader.start(block)  # because consumer will block
