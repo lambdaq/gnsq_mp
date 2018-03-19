@@ -1,16 +1,14 @@
 # gnsq_mp
 
-
-![](//img.shields.io/badge/🔥-Blazing%20Fast-red.svg)
-![](//img.shields.io/badge/😿-For Near Humans-blue.svg)
-![](//img.shields.io/badge/🏢-Enterprise Grade-999999.svg)
-![](//img.shields.io/badge/👌-Production Ready-00ddcc.svg)
-![](//img.shields.io/badge/💎-Modern-44aadd.svg)
-![](//img.shields.io/badge/🦋-Extremely Lightweight-7799cc.svg)
-![](//img.shields.io/badge/🔐-Looks Secure-yellow.svg)
-![](//img.shields.io/badge/🐛-Fatal Bug Free-green.svg)
-![](//img.shields.io/badge/🦄-Just Works-cc00cc.svg)
-
+![233](https://img.shields.io/badge/🔥-Blazing%20Fast-red.svg)
+![233](https://img.shields.io/badge/😿-For%20Near%20Humans-blue.svg)
+![233](https://img.shields.io/badge/🏢-Enterprise%20Grade-999999.svg)
+![233](https://img.shields.io/badge/👌-Production%20Ready-00ddcc.svg)
+![233](https://img.shields.io/badge/💎-Modern-44aadd.svg)
+![233](https://img.shields.io/badge/🦋-Extremely%20Lightweight-7799cc.svg)
+![233](https://img.shields.io/badge/🔐-Looks%20Secure-yellow.svg)
+![233](https://img.shields.io/badge/🐛-Fatal%20Bug%20Free-green.svg)
+![233](https://img.shields.io/badge/🦄-Just%20Works-cc00cc.svg)
 
 
 NSQ with multi process Gevent.
