@@ -1,5 +1,18 @@
 # gnsq_mp
 
+
+![](//img.shields.io/badge/🔥-Blazing%20Fast-red.svg)
+![](//img.shields.io/badge/😿-For Near Humans-blue.svg)
+![](//img.shields.io/badge/🏢-Enterprise Grade-999999.svg)
+![](//img.shields.io/badge/👌-Production Ready-00ddcc.svg)
+![](//img.shields.io/badge/💎-Modern-44aadd.svg)
+![](//img.shields.io/badge/🦋-Extremely Lightweight-7799cc.svg)
+![](//img.shields.io/badge/🔐-Looks Secure-yellow.svg)
+![](//img.shields.io/badge/🐛-Fatal Bug Free-green.svg)
+![](//img.shields.io/badge/🦄-Just Works-cc00cc.svg)
+
+
+
 NSQ with multi process Gevent.
 
 [NSQ](https://nsq.io) is a distrbuted message queue.
