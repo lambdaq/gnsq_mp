@@ -1,34 +1,53 @@
-# coding: utf-8
+# -*- coding: utf-8 -*-
+"""CPU affinity helpers built on :mod:`os`.
 
-from ctypes import cdll, Structure, c_int32, sizeof, byref
+Only available on platforms that provide ``os.sched_setaffinity`` (Linux).
+Everywhere else the helpers silently do nothing.
+"""
+
+import os
 
 
-class cpu_set_t(Structure):  # NOQA
-    _fields_ = [('bits', c_int32 * 8)]
+def is_supported():
+    return hasattr(os, 'sched_setaffinity')
 
-libc = cdll.LoadLibrary('libc.so.6')
+
+def available_cpus():
+    """CPUs the current process is allowed to run on (sorted list)."""
+    if not is_supported():
+        return []
+    return sorted(os.sched_getaffinity(0))
 
 
 class ProcessAffinity(object):
+    """Get/set the CPU affinity of a process.
+
+    Usage::
+
+        ProcessAffinity(pid).affinity = 3          # a single cpu
+        ProcessAffinity(pid).affinity = (1, 3)     # several cpus
+    """
 
     def __init__(self, pid=0):
         self.pid = pid
 
     @property
     def affinity(self):
-        cs = cpu_set_t()
-        ec = libc.sched_getaffinity(0, sizeof(cs), byref(cs))
-        if ec == 0:
-            return cs.bits[0]
+        if not is_supported():
+            return None
+        try:
+            return set(os.sched_getaffinity(self.pid))
+        except OSError:
+            return None
 
     @affinity.setter
     def affinity(self, values):
-        """use like proc_aff.affinity = 1,3"""
-        cs = cpu_set_t()
-        if not isinstance(values, tuple):
+        if not is_supported():
+            return
+        if isinstance(values, int):
             values = (values,)
-        for v in values:
-            i, b = divmod(v, 1 << 32)
-            cs.bits[i] |= (1 << b)
-        ec = libc.sched_setaffinity(0, sizeof(cs), byref(cs))
-        return ec
+        try:
+            os.sched_setaffinity(self.pid, set(values))
+        except (OSError, ValueError):
+            # process already gone, or cpu not allowed
+            pass

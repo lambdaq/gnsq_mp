@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gnsq_mp"
+dynamic = ["version"]
+description = "Multi-process NSQ consumers with gnsq and gevent: one worker process per nsqd."
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "BSD-3-Clause"}
+authors = [{name = "lambdaq", email = "lambdaq@gmail.com"}]
+keywords = ["nsq", "gnsq", "gevent", "multiprocessing", "queue"]
+classifiers = [
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX",
+    "Topic :: System :: Distributed Computing",
+]
+dependencies = [
+    "gevent>=20.5",
+    "gnsq>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/lambdaq/gnsq_mp"
+
+[tool.setuptools]
+packages = ["gnsq_mp"]
+
+[tool.setuptools.dynamic]
+version = {attr = "gnsq_mp.__version__"}

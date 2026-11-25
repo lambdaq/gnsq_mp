@@ -27,32 +27,30 @@ This `gnsq_mp` project implements a new multiprocess mode:
  - the `NsqProcessWorker` sub-process connects to a single nsqd host and consumes message
  - sub-process are health-checked and automatically restarted if exits unexpectedly
  - sub-process will exit if became a orphan
- - sub-processes are by default set CPU affilinty with only 1 processor core.
+ - sub-processes are by default pinned (Linux) to a single CPU core, spread evenly with only 1 processor core.
 
 
 # Usage
 
 First of all, create your `worker.py` like this:
 
-    
     from gnsq_mp import NsqProcessWorker
 
     class MyWorker(NsqProcessWorker):
+        max_in_flight = 200            # optional, default 200
+        consumer_options = {}          # optional, extra kwargs for gnsq.Consumer
 
-        def handle_message(self, reader, message):
-            print (message.body)
+        def handle_message(self, consumer, message):
+            print(message.body)        # finished on return, requeued on exception
 
-    if '__main__' == __name__:
-        MyWorker.run(block=True)
+    if __name__ == '__main__':
+        MyWorker.run()
 
+Note: importing `gnsq_mp.worker` monkey patches the stdlib with gevent, so only import it from the worker script.
 
-Note the `worker.py` will be launched as a deparate process with parameters `topic`, `nsqd_addr` and `channel_name`. You should be able to test the script directly in shell.
+The script is launched as a separate process with the arguments `topic nsqd_tcp_addr channel [extra_args ...]`. You can run it directly in a shell to test it.
 
-
-Then create a master which spawns the `worker.py` dynamically with nsqlookupd results.
-
-The source code should look like:
-
+Then create a controller which spawns the `worker.py` dynamically with nsqlookupd results:
 
     from gnsq_mp import NsqMPController
 
@@ -62,15 +60,24 @@ The source code should look like:
             "http://10.1.1.2:4161",
             "http://10.1.1.3:4161",
         ]
-        worker = 'worker.py'  # relative path to the script you created above
+        worker = 'worker.py'  # relative to the file defining the controller
 
     MyController.run(topic="blah", channel_name="gnsq_mp#ephemeral")
 
+`run()` accepts:
+
+ - `max_procs`: max number of worker processes, `0` (default) for no limit. Running workers are kept first.
+ - `extra_args`: list of extra command line arguments passed to every worker (available as `self.extra_args` in the worker).
+
+Tunables, as class attributes of the controller: `poll_interval` (5s), `lookup_interval` (30s), `restart_delay` (5s), `stop_timeout` (15s), `pin_cpu` (True, Linux only), `python_executable`.
+
+`SIGINT`/`SIGTERM` to the controller stops all workers gracefully (workers get `SIGTERM`, then `SIGKILL` after `stop_timeout`).
+
 # Install
 
-    pip install https://github.com/lambdaq/gnsq_mp/archive/master.zip
+    pip install gnsq_mp
 
-PyPI coming later.
+Requires Python 3.7+, `gnsq>=1.0` and `gevent`.
 
 # License
 

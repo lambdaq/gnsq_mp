@@ -1,109 +1,120 @@
-#!/home/sail/miniconda2/bin/python
-# coding: utf-8
+# -*- coding: utf-8 -*-
+"""Worker: consumes one topic/channel from a single nsqd.
 
-from gevent import monkey, sleep, signal, spawn, Timeout
-monkey.patch_all()  # noqa
+NOTE: importing this module monkey patches the standard library with gevent
+(``gnsq`` needs it). Import it from the worker script only, and import it
+before other network libraries.
+"""
 
-import os, sys, logging
+from gevent import monkey; monkey.patch_all()  # noqa: E702
 
-logger = logging.getLogger('gnsq_mp')
-# logger.addHandler(logging.StreamHandler(sys.stdout))
-# # open('gnsq_cluster_%s.log' % os.getpid(), 'a+')
-# logger.setLevel(logging.DEBUG)
+import argparse
+import os
+import signal
+import sys
 
-from random import random
+import gevent
+from gnsq import Consumer
 
-from gnsq import Reader
+from ._internal import configure_logging, logger
 
 
 class NsqProcessWorker(object):
+    """Base class of a worker script. Override :meth:`handle_message`::
 
-    reader = None
-    _shutdown_timer = -1  # seconds bevose
-    ppid = os.getppid()
+        class MyWorker(NsqProcessWorker):
+            def handle_message(self, consumer, message):
+                print(message.body)
 
-    @classmethod
-    def poll_cmd(cls):
-        while True:
-            yield raw_input()
+        if __name__ == '__main__':
+            MyWorker.run()
 
-    def handle_message(self, reader, message):
-        raise NotImplementedError()
+    The script is started by :class:`~gnsq_mp.NsqMPController` with the
+    arguments ``topic nsqd_tcp_addr channel [extra_args ...]`` and can also be
+    run by hand with the same arguments.
+    """
 
-    @classmethod
-    def run_stdin(cls):
-        """
-        @ToDo: run commands via stdin.
-        using sys.argv means static topic/nsqd
-        can not be stopped in the middle
-        """
-        for cmd in cls.poll_cmd():
-            func, args = cmd.split()
-            # copy some func from http://nsq.io/clients/tcp_protocol_spec.html
-            if func.upper() == 'SUB' and cls.reader is None and len(args) == 5:
-                cls(args)
-            elif func.upper() == 'CLS':
-                for conn in cls.reader.conns:
-                    conn.close()
+    #: ``max_in_flight`` of the consumer.
+    max_in_flight = 200
+    #: More keyword arguments for :class:`gnsq.Consumer`.
+    consumer_options = {}
+    #: Seconds to wait for in flight messages on shutdown.
+    shutdown_timeout = 8
+    #: Seconds between two checks whether the controller is still alive.
+    parent_check_interval = 2
 
-    @classmethod
-    def run(cls, block=False):
-        if len(sys.argv) != 4:
-            print>>sys.stderr, "Usage: %s topic channel nsqd_tcp_addr" % __file__
-            exit(0)
-        signal(2, cls.shutdown)
-        args = sys.argv[1:4] + [block]
-        logger.info(" [worker_start] start nsq subscriber. pid=%s, args=%s", os.getpid(), args)
-        return cls(*args)
-
-    @classmethod
-    def check_parent(cls):
-        # check original parent pid
-        try:
-            r = os.kill(cls.ppid, 0)
-        except OSError:
-            return False
-        # if original pid exists and real pid is not 1
-        ppid = os.getppid()
-        if ppid != cls.ppid:
-            return False
-        if r is None and ppid > 1:  # zombie/orphan process parent pid==1
-            return ppid
-        return False
-
-    @classmethod
-    def poll_parent(cls):
-        while cls._shutdown_timer < 0 and cls.check_parent():
-            sleep(2 + random())
-        cls.shutdown()
-        exit(0)  # force close
-
-    def __init__(self, topic, nsqd_addr, channel, block=False):
-        self.nsqd_addr = nsqd_addr
+    def __init__(self, topic, nsqd_addr, channel, extra_args=()):
         self.topic = topic
+        self.nsqd_addr = nsqd_addr
         self.channel = channel
-        NsqProcessWorker.reader = Reader(
+        self.extra_args = list(extra_args)
+        self._ppid = os.getppid()
+        self._closing = False
+        options = dict(max_in_flight=self.max_in_flight)
+        options.update(self.consumer_options)
+        self.consumer = Consumer(
             topic, channel,
+            nsqd_tcp_addresses=[nsqd_addr],
             message_handler=self.handle_message,
-            nsqd_tcp_addresses=nsqd_addr,
-            max_in_flight=200,
-            max_concurrency=2000)
-        spawn(self.__class__.poll_parent)
-        NsqProcessWorker.reader.start(block)  # because consumer will block
+            **options)
+
+    #: kept for backward compatibility
+    reader = property(lambda self: self.consumer)
+
+    def handle_message(self, consumer, message):
+        """Called for every message. The message is finished automatically
+        if this returns, and requeued if it raises."""
+        raise NotImplementedError
+
+    # -- lifecycle -------------------------------------------------------
+
+    def _watch_parent(self):
+        """Exit when the controller died (we were re-parented)."""
+        while not self._closing:
+            if os.getppid() != self._ppid:
+                logger.warning('[worker] controller is gone, exit. pid=%s',
+                               os.getpid())
+                self.shutdown()
+                return
+            gevent.sleep(self.parent_check_interval)
+
+    def _force_exit(self):
+        logger.error('[worker] shutdown timed out, force exit. pid=%s',
+                     os.getpid())
+        os._exit(1)
+
+    def shutdown(self, *args):
+        if self._closing:
+            return
+        self._closing = True
+        logger.info('[worker] closing. pid=%s nsqd=%s', os.getpid(),
+                    self.nsqd_addr)
+        gevent.spawn_later(self.shutdown_timeout, self._force_exit)
+        self.consumer.close()
+
+    def start(self, block=True):
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            gevent.signal_handler(signum, self.shutdown)
+        gevent.spawn(self._watch_parent)
+        logger.info('[worker] start. pid=%s topic=%s channel=%s nsqd=%s',
+                    os.getpid(), self.topic, self.channel, self.nsqd_addr)
+        self.consumer.start(block=block)
 
     @classmethod
-    def shutdown(cls, timeout=8):
-        if cls._shutdown_timer < 0:
-            cls._shutdown_timer = timeout  # 8 seconds timeout
-        logger.info(' [worker_close] pid=%s cls=%s, reader=%s', os.getpid(), cls, cls.reader)
-        # if cls.reader and cls.reader.conns:
-        # for conn in cls.reader.conns:
-        #     conn.close()
-        # if cls.reader:
-        if cls.reader:
-            spawn(cls.reader.close)
-        sleep(cls._shutdown_timer)
+    def parse_args(cls, argv=None):
+        parser = argparse.ArgumentParser(
+            description='gnsq_mp worker: consume from a single nsqd.')
+        parser.add_argument('topic')
+        parser.add_argument('nsqd_addr', help='nsqd tcp address, host:port')
+        parser.add_argument('channel')
+        parser.add_argument('extra_args', nargs='*')
+        return parser.parse_args(argv)
 
-
-if '__main__' == __name__:
-    NsqProcessWorker.run()
+    @classmethod
+    def run(cls, block=True, argv=None):
+        """Entry point of the worker script."""
+        configure_logging()
+        args = cls.parse_args(argv)
+        inst = cls(args.topic, args.nsqd_addr, args.channel, args.extra_args)
+        inst.start(block=block)
+        return inst
